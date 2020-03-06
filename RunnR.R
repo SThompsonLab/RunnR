@@ -21,11 +21,11 @@ dafault <<- FALSE
 
 
 #This function loads the .csv file into the appropriate dataframe and adds the 'pix' variable for graphing
-lData <- function(x){
-  pointz <<- read.table(file=x, header=TRUE, sep = "\t")
+lData <- function(x, modelT=T){
+  pointz <<- read.table(file=x, header=TRUE, fileEncoding = "latin1", sep = ",")
   if(!"pix" %in% colnames(pointz)){
     pointz$pix <<- c(1:nrow(pointz))
-    write.table(pointz, file = x, sep = "\t")
+    write.table(pointz, file = x, sep = ",")
   }
   if (dafault == FALSE){
     pointz$redNam <<- readline(prompt = "What is the name of the red color: ")
@@ -33,6 +33,9 @@ lData <- function(x){
     pointz$blueNam <<- readline(prompt = "What is the name of the blue color: ")
   }
   lineAnalysis()
+  if (modelT==T){
+    modelIt()
+  }
 }
 
 #This function is used to save the figure as a high-res tiff. You can alter the dimensions if you wish.
@@ -47,12 +50,16 @@ savetif <- function(){
 #----------------------------------------------------------------------------------------------------------------------
 #This function graphs a line analysis for all three colors, then performs a multiple linear regression of R~B and R~G.
 lineAnalysis <- function(){
+  pointz$G <<- pointz$G/(mean(pointz$G)+0.1)
+  pointz$R <<- pointz$R/(mean(pointz$R)+0.1)
+  pointz$B <<- pointz$B/(mean(pointz$B)+0.1)
+  print("pointz adjusted")
   linera <<- ggplot(data = pointz, aes(x = pix))+
-    geom_step(data = pointz, aes(x=pix, y = G, colour = greenNam), size = 1.5)+
-    geom_step(data = pointz, aes(x=pix, y = R, colour = redNam), size = 1.5)+
-    geom_step(data = pointz, aes(x=pix, y = B, colour = blueNam), size = 1.5)+
+    geom_step(data = pointz, aes(x=pix, y = G, colour = pointz$greenNam), size = 1.5)+
+    geom_step(data = pointz, aes(x=pix, y = R, colour = pointz$redNam), size = 1.5)+
+    geom_step(data = pointz, aes(x=pix, y = B, colour = pointz$blueNam), size = 1.5)+
     scale_colour_manual("", 
-                       breaks = c(redNam, greenNam, blueNam),
+                       breaks = c(pointz$redNam, pointz$greenNam, pointz$blueNam),
                        values = c("blue", "red", "darkgreen"))+
     xlab("Relative pixel position")+
     ylab("Relative pixel intentsity")+
@@ -62,10 +69,12 @@ lineAnalysis <- function(){
     theme_classic()+
     theme_general
   print(linera)
-  
+}
+
+modelIt <- function(df=pointz){
   #Change the next lines to alter the regression analysis
-  model <<- lm(pointz$G~pointz$B, data = pointz)
-  coorz <<- cor.test(x = pointz$G, y = pointz$B, method = "pearson")
+  model <<- lm(df$G~df$R, data = df)
+  coorz <<- cor.test(x = df$G, y = df$R, method = "pearson")
   
   # Significance is tested and, if found, the linear regression model is displayed
   if (coorz[3] < 0.05){
